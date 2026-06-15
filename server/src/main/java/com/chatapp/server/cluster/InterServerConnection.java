@@ -1,8 +1,15 @@
 package com.chatapp.server.cluster;
 
 import com.chatapp.shared.model.Message;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 /**
  * Physical transport link between server nodes.
@@ -24,6 +31,38 @@ import org.slf4j.LoggerFactory;
 public final class InterServerConnection {
 
     private static final Logger log = LoggerFactory.getLogger(InterServerConnection.class);
+
+    private final Set<String> connectedNodes = ConcurrentHashMap.newKeySet();
+
+    private volatile BiConsumer<String, Message> incomingHandler;
+
+    /** The gRPC server that listens for incoming relay calls from peer nodes. */
+    private Server grpcServer;
+
+    public void start() throws IOException {
+        log.info("Starting inter-server connection");
+
+        // bind a server port (e.g., 50001) to receive messages from other nodes
+        // implement the server-side gRPC service (ClusterService)
+        // expose the `relay` method as an RPC
+        // register discovered peer nodes in `connectedNodes`
+        // start a background task that attempts to connect to newly discovered peers
+        // set `this.incomingHandler` to the central MessageRouter
+        grpcServer = ServerBuilder.forPort(50001)
+                .addService(new ClusterServiceImpl())
+                .build()
+                .start();
+
+        log.info("Inter-server gRPC listener started on port 50001");
+    }
+
+    /** Gracefully shuts down the gRPC listener. */
+    public void stop() {
+        if (grpcServer != null) {
+            grpcServer.shutdown();
+            log.info("Inter-server gRPC listener stopped");
+        }
+    }
 
     /**
      * Relay a message to a specific remote server node.
